@@ -39,11 +39,13 @@ def pick(obj, *paths):
 
 
 def to_int(v):
-    """Coerce to a rounded int, or None if not numeric."""
+    """Coerce to an int, or None if not numeric. Rounds half up (inputs are
+    non-negative percentages/durations) so all three implementations agree —
+    Python's round() and printf %.0f are half-even, JS Math.round is half-up."""
     if v is None or v == "":
         return None
     try:
-        return round(float(v))
+        return int(float(v) + 0.5)
     except (TypeError, ValueError):
         return None
 
@@ -65,22 +67,27 @@ def main():
     five_hr = pick(data, "rate_limits.five_hour.used_percentage")
     seven_day = pick(data, "rate_limits.seven_day.used_percentage")
 
-    # Effort level is not in the stdin payload — read it from settings.json.
-    # Key name has varied across versions; check project settings, then user.
-    effort = None
-    settings_paths = [
-        os.path.join(os.getcwd(), ".claude", "settings.json"),
-        os.path.join(os.path.expanduser("~"), ".claude", "settings.json"),
-    ]
-    for sp in settings_paths:
-        try:
-            with open(sp, "r", encoding="utf-8") as fh:
-                s = json.load(fh)
-            effort = s.get("effortLevel") or s.get("effort")
-            if effort:
-                break
-        except (OSError, ValueError):
-            pass  # missing or unparseable — ignore
+    # Effort: the payload field effort.level is the live session value
+    # (tracks mid-session /effort changes; absent when the model has no
+    # effort parameter). Fall back to the env var, then the effortLevel
+    # settings key, for older Claude Code versions without the field.
+    effort = pick(data, "effort.level") or os.environ.get(
+        "CLAUDE_CODE_EFFORT_LEVEL"
+    )
+    if not effort:
+        settings_paths = [
+            os.path.join(os.getcwd(), ".claude", "settings.json"),
+            os.path.join(os.path.expanduser("~"), ".claude", "settings.json"),
+        ]
+        for sp in settings_paths:
+            try:
+                with open(sp, "r", encoding="utf-8") as fh:
+                    s = json.load(fh)
+                effort = s.get("effortLevel")
+                if effort:
+                    break
+            except (OSError, ValueError):
+                pass  # missing or unparseable — ignore
 
     parts = []
 

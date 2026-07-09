@@ -15,20 +15,27 @@ ctx_used=$(j '.context_window.used_percentage')
 five_hr=$(j '.rate_limits.five_hour.used_percentage')
 seven_day=$(j '.rate_limits.seven_day.used_percentage')
 
-# Effort level is NOT in the stdin JSON (open CC issue) — read it from settings.
-# Key name has varied across versions, so try a couple.
-effort=""
-for s in "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"; do
-  [ -f "$s" ] || continue
-  effort=$(jq -r '.effortLevel // .effort // empty' "$s" 2>/dev/null)
-  [ -n "$effort" ] && break
-done
+# Effort: the payload field .effort.level is the live session value (tracks
+# mid-session /effort changes; absent when the model has no effort parameter).
+# Fall back to the env var, then the effortLevel settings key, for older
+# Claude Code versions without the field.
+effort=$(j '.effort.level')
+[ -z "$effort" ] && effort="${CLAUDE_CODE_EFFORT_LEVEL:-}"
+if [ -z "$effort" ]; then
+  for s in "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"; do
+    [ -f "$s" ] || continue
+    effort=$(jq -r '.effortLevel // empty' "$s" 2>/dev/null)
+    [ -n "$effort" ] && break
+  done
+fi
 
 # --- Helpers ---
 # Round a numeric string to an int; return non-zero if not numeric.
+# Rounds half up (inputs are non-negative) to match the JS/Python versions —
+# printf '%.0f' would round half-even and disagree on values like 62.5.
 to_int() {
   case "$1" in ''|*[!0-9.]*) return 1 ;; esac
-  printf '%.0f' "$1" 2>/dev/null
+  awk -v v="$1" 'BEGIN{ printf "%d", v + 0.5 }'
 }
 
 # --- Session duration from total_duration_ms ---

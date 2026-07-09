@@ -8,7 +8,7 @@ A custom status line showing working directory, model, reasoning effort,
 context usage, rate-limit quotas, session cost, and elapsed time:
 
 ```
-~/Documents/GitHub | Opus 4.8 | ctx:62% | quota:5h:20% 7d:5% | cost:$0.1234 | 1h02m
+~/Documents/GitHub | Opus 4.8 | effort:high | ctx:63% | quota:5h:20% 7d:5% | cost:$0.1234 | 1h02m
 ```
 
 ### Which file to use
@@ -35,6 +35,21 @@ have. All three implementations render identical output.
   `apt install jq`. On macOS `jq` is **not** preinstalled.
 
 ### Install
+
+**Easiest — let Claude Code do it:**
+
+```bash
+git clone https://github.com/joeytroy/claude-scripts
+cd claude-scripts
+claude
+```
+
+then just say **"install the status line"**. The repo's `CLAUDE.md` tells
+Claude how: it detects which runtime you have, points your
+`~/.claude/settings.json` at the script in the clone (so `git pull` picks up
+updates), and verifies the output. No manual copying or JSON editing.
+
+**Manual:**
 
 Copy your chosen script into `~/.claude/` (or anywhere), then point Claude Code
 at it in `~/.claude/settings.json`:
@@ -67,8 +82,15 @@ Restart Claude Code afterward — the status line is loaded at startup.
 - **cwd, model, cost, duration** — standard status-line payload fields; always populate.
 - **`context_window` / `rate_limits`** — only render if your Claude Code version
   includes them in the payload; otherwise those segments are silently omitted.
-- **effort** — not in the payload; read from `settings.json` (`.effortLevel` or
-  `.effort`). Blank if neither key is set.
+- **effort** — read from the payload field `effort.level`
+  (`low`/`medium`/`high`/`xhigh`/`max`; ultracode reports as `xhigh`). This is
+  the live session value, so mid-session `/effort` changes show up. On older
+  Claude Code versions without the field, falls back to the
+  `CLAUDE_CODE_EFFORT_LEVEL` env var, then the `effortLevel` key in
+  `.claude/settings.json` (project, then user). Omitted when the model has no
+  effort parameter and no fallback is set.
+- Fractional percentages round half **up** in all three implementations
+  (62.5 → 63).
 
 ### Test locally
 
@@ -76,6 +98,7 @@ Restart Claude Code afterward — the status line is loaded at startup.
 echo '{
   "workspace": {"current_dir": "/home/you/project"},
   "model": {"display_name": "Opus 4.8"},
+  "effort": {"level": "high"},
   "cost": {"total_cost_usd": 0.1234, "total_duration_ms": 3725000},
   "context_window": {"used_percentage": 62.5},
   "rate_limits": {"five_hour": {"used_percentage": 20}, "seven_day": {"used_percentage": 5}}

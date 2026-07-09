@@ -9,10 +9,6 @@ context usage, rate-limit quotas, session cost, and elapsed time:
 
 <img width="1497" height="957" alt="image" src="https://github.com/user-attachments/assets/3a650c65-6867-442f-b587-395ce14cbf1b" />
 
-```
-~/Documents/GitHub | Opus 4.8 | effort:high | ctx:63% | quota:5h:20% 7d:5% | cost:$0.1234 | 1h02m
-```
-
 ### Which file to use
 
 There is **no single script that runs on stock Windows + macOS + Linux with

@@ -48,7 +48,9 @@ function pick(obj, ...paths) {
   return undefined;
 }
 
-// Coerce to a rounded integer, or null if not numeric.
+// Coerce to an integer, or null if not numeric. Math.round rounds half up,
+// which is the convention all three implementations follow (inputs are
+// non-negative percentages/durations).
 function toInt(v) {
   if (v === undefined || v === null || v === '') return null;
   const n = Number(v);
@@ -72,21 +74,25 @@ function main() {
   const fiveHr = pick(data, 'rate_limits.five_hour.used_percentage');
   const sevenDay = pick(data, 'rate_limits.seven_day.used_percentage');
 
-  // Effort level is not in the stdin payload — read it from settings.json.
-  // Key name has varied across versions, so try a couple; check project
-  // settings first, then the user-level ones.
-  let effort;
-  const settingsPaths = [
-    path.join(process.cwd(), '.claude', 'settings.json'),
-    path.join(os.homedir(), '.claude', 'settings.json'),
-  ];
-  for (const sp of settingsPaths) {
-    try {
-      const s = JSON.parse(fs.readFileSync(sp, 'utf8'));
-      effort = s.effortLevel || s.effort || undefined;
-      if (effort) break;
-    } catch {
-      /* missing or unparseable — ignore */
+  // Effort: the payload field effort.level is the live session value
+  // (tracks mid-session /effort changes; absent when the model has no
+  // effort parameter). Fall back to the env var, then the effortLevel
+  // settings key, for older Claude Code versions without the field.
+  let effort =
+    pick(data, 'effort.level') || process.env.CLAUDE_CODE_EFFORT_LEVEL;
+  if (!effort) {
+    const settingsPaths = [
+      path.join(process.cwd(), '.claude', 'settings.json'),
+      path.join(os.homedir(), '.claude', 'settings.json'),
+    ];
+    for (const sp of settingsPaths) {
+      try {
+        const s = JSON.parse(fs.readFileSync(sp, 'utf8'));
+        effort = s.effortLevel || undefined;
+        if (effort) break;
+      } catch {
+        /* missing or unparseable — ignore */
+      }
     }
   }
 

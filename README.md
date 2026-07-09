@@ -7,6 +7,8 @@ Utilities for [Claude Code](https://claude.com/claude-code).
 A custom status line showing working directory, model, reasoning effort,
 context usage, rate-limit quotas, session cost, and elapsed time:
 
+![Claude Code status line in a terminal](assets/statusline.png)
+
 ```
 ~/Documents/GitHub | Opus 4.8 | effort:high | ctx:63% | quota:5h:20% 7d:5% | cost:$0.1234 | 1h02m
 ```
